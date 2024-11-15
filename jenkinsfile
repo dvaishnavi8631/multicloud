@@ -1,0 +1,91 @@
+pipeline {
+    agent any
+    environment {
+        AWS_ACCESS_KEY_ID = 'ASIATUYJP7SUP2I35UEO'  // IAM Access Key (for ECR login)
+        AWS_SECRET_ACCESS_KEY = 'z3cmhCIxdZnr+dUtnnW6WsERDLhpazMWUGGAGy7/'  // IAM Secret Key (for ECR login)
+        AWS_REGION = 'us-east-1'  // Region for ECR login
+        ECR_REGISTRY = '250738637992.dkr.ecr.us-east-1.amazonaws.com'  // Replace with your ECR registry URL
+        SSO_PROFILE = 'MSCCLOUD-250738637992'  // AWS SSO profile name
+        GIT_REPO = 'https://github.com/dvaishnavi8631/multicloud.git'  // Your GitHub repository URL
+        GIT_CREDENTIALS_ID = 'github'  // The Jenkins credentials ID for your GitHub PAT
+        ECR_REPOSITORY = 'x23183209'  // Replace with your ECR repository name
+    }
+    stages {
+        stage('Checkout Code') {
+            steps {
+                script {
+                    echo 'Checking out the Git repository...'
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/main']],  // Checkout the 'main' branch
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [],
+                        userRemoteConfigs: [[
+                            url: "${GIT_REPO}",
+                            credentialsId: "${GIT_CREDENTIALS_ID}"
+                        ]]
+                    ])
+                }
+            }
+        }
+
+        stage('Login to AWS via SSO') {
+            steps {
+                script {
+                    // Ensure AWS SSO login is performed manually before running the pipeline
+                    echo 'Ensure that AWS SSO login has been performed manually before this step.'
+                    sh "aws sso login --profile ${SSO_PROFILE} --region us-east-1" // This requires manual login step
+                }
+            }
+        }
+
+        stage('Login to ECR') {
+            steps {
+                script {
+                    // Retrieve the login password for ECR
+                    def loginPassword = sh(script: "aws ecr get-login-password --region ${AWS_REGION} --profile ${SSO_PROFILE}", returnStdout: true).trim()
+                    echo "Login password: ${loginPassword}"  // For debugging, remove this line in production
+                    
+                    // Log into ECR using Docker
+                    sh """docker login -u AWS https://${ECR_REGISTRY} -p ${loginPassword}"""
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo 'Building Docker image...'
+                    // Build the Docker image from the Dockerfile in the repo
+                    sh "docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER} ."
+                }
+            }
+        }
+
+        stage('Push Docker Image to ECR') {
+            steps {
+                script {
+                    echo 'Pushing Docker image to AWS ECR...'
+                    // Push the built Docker image to AWS ECR
+                    sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}"
+                }
+            }
+        }
+
+        stage('List ECR Repositories') {
+            steps {
+                script {
+                    sh "aws ecr describe-repositories --region ${AWS_REGION} --profile ${SSO_PROFILE}"
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo "Pipeline executed successfully!"
+        }
+        failure {
+            echo "Pipeline failed."
+        }
+    }
+}
