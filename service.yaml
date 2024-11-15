@@ -9,4 +9,4 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
-  type: LoadBalancer  # Use LoadBalancer if you're on a cloud provider that supports it
+  type: nodeport  # Use LoadBalancer if you're on a cloud provider that supports it
