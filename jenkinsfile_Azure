@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+    stages {
+        stage('Login to Azure') {
+            steps {
+                script {
+                    // Using Jenkins credentials manager to access the Azure Service Principal credentials
+                    withCredentials([
+                        string(credentialsId: 'azure-client-id', variable: 'AZURE_CLIENT_ID'),
+                        string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
+                        string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
+                    ]) {
+                        echo "Logging in to Azure with Service Principal..."
+
+                        // Run Azure CLI login command using the credentials
+                        sh """
+                        az login --service-principal -u ${AZURE_CLIENT_ID} -p ${AZURE_CLIENT_SECRET} --tenant ${AZURE_TENANT_ID}
+                        az account show --output table
+                        """
+                    }
+                }
+            }
+        }
+        stage('List AKS Clusters') {
+            steps {
+                script {
+                    echo "Listing AKS clusters..."
+                    sh "az aks list --output table"
+                }
+            }
+        }
+    }
+}
