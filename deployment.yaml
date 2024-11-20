@@ -14,6 +14,7 @@ spec:
     spec:
       containers:
         - name: simple-app
-          image: 250738637992.dkr.ecr.eu-west-1.amazonaws.com/x23183209-multicloud:latest  # Replace with the actual image name if pushed to a registry
+          # Image will be dynamically updated in the pipeline
+          image: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG} 
           ports:
             - containerPort: 80
