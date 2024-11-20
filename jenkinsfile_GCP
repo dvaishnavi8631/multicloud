@@ -1,0 +1,39 @@
+pipeline {
+    agent any
+    environment {
+        GCP_PROJECT = 'elegant-hope-441319-t6'
+    }
+    stages {
+        stage('Authenticate with Google Cloud') {
+            steps {
+                script {
+                    // Ensure the correct file path is passed
+                    withCredentials([file(credentialsId: 'gcpacnt', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                        echo "Service Account Key Path: ${GOOGLE_APPLICATION_CREDENTIALS}"
+                        echo "GCP Project: ${GCP_PROJECT}"
+
+                        // Authenticate using gcloud with the correct file path
+                        sh '''
+                            # Ensure the correct gcloud path is used
+                            export PATH=/home/jenkins/google-cloud-sdk/bin:$PATH
+                            echo "Using key file: ${GOOGLE_APPLICATION_CREDENTIALS}"
+
+                            # Authenticate with the service account key file
+                            gcloud auth activate-service-account --key-file="${GOOGLE_APPLICATION_CREDENTIALS}" --verbosity=debug
+
+                            # Set the GCP project
+                            gcloud config set project ${GCP_PROJECT} --verbosity=debug
+
+                            # Verify the active configuration
+                            gcloud config list --verbosity=debug
+
+                            # List all GKE clusters in the project
+                            echo "Listing GKE clusters in project ${GCP_PROJECT}..."
+                            gcloud container clusters list --verbosity=debug
+                        '''
+                    }
+                }
+            }
+        }
+    }
+}
