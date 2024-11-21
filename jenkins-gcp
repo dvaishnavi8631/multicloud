@@ -1,0 +1,124 @@
+pipeline {
+    agent any
+    environment {
+        GCP_PROJECT = 'elegant-hope-441319-t6'  // GCP project ID
+        REGION = 'europe-west1'  // Correct GCR region for Artifact Registry
+        GCR_REGISTRY = "${REGION}-docker.pkg.dev"  // Artifact Registry URL for europe-west1
+        GKE_CLUSTER_NAME = 'gcp-multicloud'  // GKE cluster name
+        GKE_CLUSTER_ZONE = 'europe-west1-b'  // GKE cluster zone (use the correct zone)
+        GIT_REPO = 'https://github.com/dvaishnavi8631/multicloud.git'  // GitHub repository URL
+        GIT_CREDENTIALS_ID = 'github'  // Jenkins credentials ID for GitHub PAT
+        GCR_REPOSITORY = 'gcp-multicloud'  // Artifact Registry repository name
+        K8S_NAMESPACE = 'default'  // Kubernetes namespace
+        DEPLOYMENT_NAME = 'simple-app-deployment'  // Kubernetes deployment name
+        IMAGE_TAG = 'latest'  // Docker image tag
+    }
+    stages {
+        stage('Checkout Code') {
+            steps {
+                script {
+                    echo 'Checking out the Git repository...'
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/main']],
+                        userRemoteConfigs: [[
+                            url: "${GIT_REPO}",
+                            credentialsId: "${GIT_CREDENTIALS_ID}"
+                        ]]
+                    ])
+                }
+            }
+        }
+
+        stage('Authenticate with GCP') {
+            steps {
+                script {
+                    echo 'Authenticating with Google Cloud...'
+                    withCredentials([file(credentialsId: 'gcpacnt', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                        echo "Using service account key from: ${GOOGLE_APPLICATION_CREDENTIALS}"
+                        // Ensure the correct gcloud path is used
+                        sh """
+                            export PATH=/home/jenkins/google-cloud-sdk/bin:$PATH
+                            /home/jenkins/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file="${GOOGLE_APPLICATION_CREDENTIALS}"
+                            /home/jenkins/google-cloud-sdk/bin/gcloud config set project ${GCP_PROJECT}
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Login to Artifact Registry') {
+            steps {
+                script {
+                    echo 'Logging into Google Artifact Registry using OAuth2 token...'
+                    // Manually authenticate Docker using gcloud's access token
+                    sh """
+                        gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin ${REGION}-docker.pkg.dev
+                    """
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo 'Building Docker image...'
+                    // Build Docker image with the correct Artifact Registry URL
+                    sh "docker build -t ${GCR_REGISTRY}/${GCP_PROJECT}/${GCR_REPOSITORY}:${IMAGE_TAG} ."
+                }
+            }
+        }
+
+        stage('Push Docker Image to Artifact Registry') {
+            steps {
+                script {
+                    echo 'Pushing Docker image to Google Artifact Registry...'
+                    // Push Docker image to Artifact Registry
+                    sh "docker push ${GCR_REGISTRY}/${GCP_PROJECT}/${GCR_REPOSITORY}:${IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Configure kubectl for GKE') {
+            steps {
+                script {
+                    echo 'Configuring kubectl to connect to GKE...'
+                    sh """
+                        /home/jenkins/google-cloud-sdk/bin/gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_CLUSTER_ZONE} --project ${GCP_PROJECT}
+                    """
+                }
+            }
+        }
+
+        stage('Create or Update Deployment') {
+            steps {
+                script {
+                    echo 'Applying Kubernetes deployment manifest...'
+                    // Update the image in the deployment.yaml and apply
+                    sh """
+                        kubectl set image deployment/${DEPLOYMENT_NAME} ${DEPLOYMENT_NAME}=${GCR_REGISTRY}/${GCP_PROJECT}/${GCR_REPOSITORY}:${IMAGE_TAG} --namespace=${K8S_NAMESPACE}
+                        kubectl apply -f deployment.yaml --namespace=${K8S_NAMESPACE}
+                        kubectl apply -f service.yaml --namespace=${K8S_NAMESPACE}
+                    """
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo 'Verifying application deployment...'
+                    sh "kubectl get pods --namespace=${K8S_NAMESPACE}"
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo "Pipeline executed successfully! Application deployed to GKE."
+        }
+        failure {
+            echo "Pipeline failed. Check the logs for details."
+        }
+    }
+}

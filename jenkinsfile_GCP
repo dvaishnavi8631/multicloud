@@ -1,37 +1,155 @@
 pipeline {
     agent any
     environment {
-        GCP_PROJECT = 'elegant-hope-441319-t6'
+        GCP_PROJECT = 'elegant-hope-441319-t6'  // Replace with your GCP project ID
+        GKE_CLUSTER = 'gcp-multicloud'  // Replace with your GKE cluster name
+        GKE_REGION = 'europe-west1'  // Replace with your GKE region
+        IMAGE_NAME = 'europe-docker.pkg.dev/${GCP_PROJECT}/gcp-multicloud/nginx-sample'  // Artifact Registry image endpoint
+        IMAGE_TAG = 'latest'  // Tag for the Docker image
+        GCLOUD_PATH = '/home/jenkins/google-cloud-sdk/bin'  // Path to the Google Cloud SDK
     }
     stages {
         stage('Authenticate with Google Cloud') {
             steps {
                 script {
-                    // Ensure the correct file path is passed
+                    // Authenticate using the service account credentials stored in Jenkins
                     withCredentials([file(credentialsId: 'gcpacnt', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                         echo "Service Account Key Path: ${GOOGLE_APPLICATION_CREDENTIALS}"
                         echo "GCP Project: ${GCP_PROJECT}"
 
-                        // Authenticate using gcloud with the correct file path
-                        sh '''
-                            # Ensure the correct gcloud path is used
-                            export PATH=/home/jenkins/google-cloud-sdk/bin:$PATH
-                            echo "Using key file: ${GOOGLE_APPLICATION_CREDENTIALS}"
+                        // Authenticate to GCP and set the project
+                        sh """
+                            export PATH=${GCLOUD_PATH}:$PATH
+                            gcloud auth activate-service-account --key-file="${GOOGLE_APPLICATION_CREDENTIALS}"
+                            gcloud config set project ${GCP_PROJECT}
 
-                            # Authenticate with the service account key file
-                            gcloud auth activate-service-account --key-file="${GOOGLE_APPLICATION_CREDENTIALS}" --verbosity=debug
-
-                            # Set the GCP project
-                            gcloud config set project ${GCP_PROJECT} --verbosity=debug
-
-                            # Verify the active configuration
-                            gcloud config list --verbosity=debug
-
-                            # List all GKE clusters in the project
-                            echo "Listing GKE clusters in project ${GCP_PROJECT}..."
-                            gcloud container clusters list --verbosity=debug
-                        '''
+                            # Debug: Verify authentication and list GCP repositories
+                            gcloud auth list
+                            gcloud artifacts repositories list --location=europe
+                        """
                     }
+                }
+            }
+        }
+        
+        stage('Install GKE Auth Plugin') {
+            steps {
+                script {
+                    echo "Installing GKE Auth Plugin for kubectl..."
+
+                    // Install the GKE Auth plugin
+                    sh """
+                        export PATH=${GCLOUD_PATH}:$PATH
+                        gcloud components install gke-gcloud-auth-plugin
+                    """
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo "Building Docker image for NGINX sample application..."
+
+                    // Create a Dockerfile for the NGINX application
+                    writeFile file: 'Dockerfile', text: '''
+                        FROM nginx:latest
+                        COPY ./index.html /usr/share/nginx/html/index.html
+                    '''
+
+                    // Create a simple index.html page for the NGINX app
+                    writeFile file: 'index.html', text: '''
+                        <html>
+                            <head><title>NGINX Sample</title></head>
+                            <body><h1>Welcome to NGINX on Kubernetes!</h1></body>
+                        </html>
+                    '''
+
+                    // Build the Docker image
+                    sh """
+                        export PATH=${GCLOUD_PATH}:$PATH
+                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                    """
+                }
+            }
+        }
+
+        stage('Push Docker Image to Artifact Registry') {
+            steps {
+                script {
+                    echo "Pushing Docker image to Google Cloud Artifact Registry..."
+                    
+                    // Authenticate Docker with Artifact Registry
+                    sh """
+                        export PATH=${GCLOUD_PATH}:$PATH
+                        gcloud auth configure-docker europe-docker.pkg.dev
+                    """
+
+                    // Push the Docker image to Artifact Registry
+                    sh """
+                        export PATH=${GCLOUD_PATH}:$PATH
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to GKE') {
+            steps {
+                script {
+                    echo "Deploying NGINX application to GKE..."
+
+                    // Authenticate to GKE using the correct region
+                    sh """
+                        export PATH=${GCLOUD_PATH}:$PATH
+                        gcloud container clusters get-credentials ${GKE_CLUSTER} --region ${GKE_REGION} --project ${GCP_PROJECT}
+                    """
+
+                    // Create Kubernetes deployment YAML for NGINX
+                    writeFile file: 'nginx-deployment.yaml', text: '''
+                        apiVersion: apps/v1
+                        kind: Deployment
+                        metadata:
+                          name: nginx-sample
+                        spec:
+                          replicas: 2
+                          selector:
+                            matchLabels:
+                              app: nginx-sample
+                          template:
+                            metadata:
+                              labels:
+                                app: nginx-sample
+                            spec:
+                              containers:
+                                - name: nginx
+                                  image: ${IMAGE_NAME}:${IMAGE_TAG}  # Ensure the correct image and tag
+                                  ports:
+                                    - containerPort: 80
+                    '''
+
+                    // Create Kubernetes service YAML for NGINX
+                    writeFile file: 'nginx-service.yaml', text: '''
+                        apiVersion: v1
+                        kind: Service
+                        metadata:
+                          name: nginx-sample
+                        spec:
+                          selector:
+                            app: nginx-sample
+                          ports:
+                            - protocol: TCP
+                              port: 80
+                              targetPort: 80
+                          type: NodePort  # Change to LoadBalancer if required
+                    '''
+
+                    // Deploy to GKE using kubectl
+                    sh """
+                        export PATH=${GCLOUD_PATH}:$PATH
+                        kubectl apply -f nginx-deployment.yaml
+                        kubectl apply -f nginx-service.yaml
+                    """
                 }
             }
         }
