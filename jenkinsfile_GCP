@@ -102,7 +102,7 @@ pipeline {
                     // Authenticate to GKE using the correct region
                     sh """
                         export PATH=${GCLOUD_PATH}:$PATH
-                        gcloud container clusters get-credentials ${GKE_CLUSTER} --region ${GKE_REGION} --project ${GCP_PROJECT}
+                        gcloud container clusters get-credentials ${GKE_CLUSTER} --zone europe-west1-b --project ${GCP_PROJECT}
                     """
 
                     // Create Kubernetes deployment YAML for NGINX
