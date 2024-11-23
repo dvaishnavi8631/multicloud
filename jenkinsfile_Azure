@@ -1,25 +1,22 @@
 pipeline {
     agent any
     environment {
-        AZURE_SUBSCRIPTION_ID = 'your-azure-subscription-id'  // Replace with your Azure Subscription ID
-        AZURE_RESOURCE_GROUP = 'Multicloud'    // Replace with your Azure Resource Group
-        AKS_CLUSTER_NAME = 'multicloudAKS'            // Replace with your AKS cluster name
-        IMAGE_NAME = 'nginx-sample'                            // The Docker image name
-        IMAGE_TAG = 'latest'                                   // Tag for the Docker image
+        AZURE_SUBSCRIPTION_ID = '2d101f2e-3531-4cd5-a463-6f697453bb43'  // Your Azure Subscription ID
+        AZURE_RESOURCE_GROUP = 'Multicloud'    // Your Azure Resource Group
+        AKS_CLUSTER_NAME = 'multicloudAKS'            // Your AKS cluster name
+        IMAGE_NAME = 'multicloud-app'                            // Your application image name
+        IMAGE_TAG = 'latest'                                   // Docker image tag
     }
     stages {
         stage('Login to Azure') {
             steps {
                 script {
-                    // Using Jenkins credentials manager to access the Azure Service Principal credentials
                     withCredentials([
                         string(credentialsId: 'azure-client-id', variable: 'AZURE_CLIENT_ID'),
                         string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
                         string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
                     ]) {
                         echo "Logging in to Azure with Service Principal..."
-
-                        // Run Azure CLI login command using the credentials
                         sh """
                         az login --service-principal -u ${AZURE_CLIENT_ID} -p ${AZURE_CLIENT_SECRET} --tenant ${AZURE_TENANT_ID}
                         az account show --output table
@@ -28,114 +25,22 @@ pipeline {
                 }
             }
         }
-
-        stage('Get AKS Credentials') {
-            steps {
-                script {
-                    echo "Getting AKS credentials..."
-
-                    // Get the AKS cluster credentials
-                    sh """
-                    az aks get-credentials --resource-group ${AZURE_RESOURCE_GROUP} --name ${AKS_CLUSTER_NAME}
-                    """
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    echo "Building Docker image for NGINX sample application..."
-
-                    // Create a Dockerfile for the NGINX application
-                    writeFile file: 'Dockerfile', text: '''
-                        FROM nginx:latest
-                        COPY ./index.html /usr/share/nginx/html/index.html
-                    '''
-
-                    // Create a simple index.html page for the NGINX app
-                    writeFile file: 'index.html', text: '''
-                        <html>
-                            <head><title>NGINX Sample</title></head>
-                            <body><h1>Welcome to NGINX on Kubernetes!</h1></body>
-                        </html>
-                    '''
-
-                    // Build the Docker image
-                    sh """
-                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                    """
-                }
-            }
-        }
-
-        stage('Push Docker Image to Azure Container Registry') {
-            steps {
-                script {
-                    echo "Pushing Docker image to Azure Container Registry..."
-
-                    // Authenticate with Azure Container Registry (ACR)
-                    sh """
-                    az acr login --name x23183209multicloud  # Ensure your ACR name is correct
-                    """
-
-                    // Tag and push the Docker image to Azure Container Registry
-                    sh """
-                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} x23183209multicloud.azurecr.io/${IMAGE_NAME}:${IMAGE_TAG}
-                    docker push x23183209multicloud.azurecr.io/${IMAGE_NAME}:${IMAGE_TAG}
-                    """
-                }
-            }
-        }
-
+        // Other stages omitted for brevity
         stage('Deploy to AKS') {
             steps {
                 script {
-                    echo "Deploying NGINX application to AKS..."
-
-                    // Create Kubernetes deployment YAML for NGINX
-                    writeFile file: 'nginx-deployment.yaml', text: '''
-                        apiVersion: apps/v1
-                        kind: Deployment
-                        metadata:
-                          name: nginx-sample
-                        spec:
-                          replicas: 2
-                          selector:
-                            matchLabels:
-                              app: nginx-sample
-                          template:
-                            metadata:
-                              labels:
-                                app: nginx-sample
-                            spec:
-                              containers:
-                                - name: nginx
-                                  image: x23183209multicloud.azurecr.io/nginx-sample:latest  # Use the ACR image
-                                  ports:
-                                    - containerPort: 80
-                    '''
-
-                    // Create Kubernetes service YAML for NGINX
-                    writeFile file: 'nginx-service.yaml', text: '''
-                        apiVersion: v1
-                        kind: Service
-                        metadata:
-                          name: nginx-sample
-                        spec:
-                          selector:
-                            app: nginx-sample
-                          ports:
-                            - protocol: TCP
-                              port: 80
-                              targetPort: 80
-                          type: LoadBalancer  # Expose via LoadBalancer
-                    '''
-
-                    // Deploy to AKS using kubectl
+                    echo "Deploying application to AKS..."
+                    withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+                        sh """
+                        if [ -d multicloud ]; then
+                            rm -rf multicloud
+                        fi
+                        git clone https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/dvaishnavi8631/multicloud.git
+                        """
+                    }
                     sh """
-                        kubectl apply -f nginx-deployment.yaml
-                        kubectl apply -f nginx-service.yaml
+                    kubectl apply -f multicloud/deployment.yaml
+                    kubectl apply -f multicloud/service.yaml
                     """
                 }
             }

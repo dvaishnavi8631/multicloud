@@ -1,0 +1,30 @@
+Step 1: Start EC2
+Step 2: Connect to EC2
+Step 3: Start Jenkins
+Step 4: 
+
+
+
+
+To DELETE deployments:
+
+------------------------------------------For AWS----------------------------------------------------------
+1. login to AWS:
+2. run $aws eks --region eu-west1 update-kubeconfig --name x23183209-multicloud
+3. $kubectl get deployments
+4. $kubectl delete deployment simple-app-deployment
+5. $aws eks update-kubeconfig --region eu-west1 --name x23183209-multicloud
+6. $kubectl scale deployment x23183209-multicloud --replicas=0
+
+------------------------------------------For GCP----------------------------------------------------------
+
+1. login to AWS:
+2. run $gcloud container clusters get-credentials gcp-multicloud --zone europe-west1-b --project elegant-hope-441319-t6
+3. $kubectl get deployments
+4. $kubectl delete deployment simple-app-deployment
+
+------------------------------------------For Azure--------------------------------------------------------
+1. Login to Azure
+2. run az aks get-credentials --resource-group Multicloud --name multicloudAKS
+3. $kubectl get deployments
+4. $kubectl delete deployment simple-app-deployment
