@@ -18,13 +18,13 @@ To DELETE deployments:
 
 ------------------------------------------For GCP----------------------------------------------------------
 
-1. login to AWS:
+1. login to GCP:
 2. run $gcloud container clusters get-credentials gcp-multicloud --zone europe-west1-b --project elegant-hope-441319-t6
 3. $kubectl get deployments
 4. $kubectl delete deployment simple-app-deployment
 
 ------------------------------------------For Azure--------------------------------------------------------
 1. Login to Azure
-2. run az aks get-credentials --resource-group Multicloud --name multicloudAKS
+2. $run az aks get-credentials --resource-group Multicloud --name multicloudAKS
 3. $kubectl get deployments
 4. $kubectl delete deployment simple-app-deployment
