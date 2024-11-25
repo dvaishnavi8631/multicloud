@@ -1,0 +1,14 @@
+apiVersion: nginx.org/v1
+kind: ServiceEntry
+metadata:
+  name: cross-cluster-entry-eks
+spec:
+  hosts:
+    - "simple-app-eks.local"  # DNS of your EKS service
+  ports:
+    - number: 80
+      name: http
+      protocol: HTTP
+  resolution: DNS
+  address:
+    - "34.118.233.242"  # External IP of the EKS service (NodePort or LoadBalancer)

@@ -4,11 +4,11 @@ metadata:
   name: cross-cluster-entry-gke
 spec:
   hosts:
-    - "simple-app-gke.local"  # This is a DNS name you'll create for GKE
+    - "simple-app-gke.local"  # DNS of your GKE service
   ports:
     - number: 80
       name: http
       protocol: HTTP
   resolution: DNS
   address:
-    - "34.118.233.241"  # External IP of the GKE service
+    - "34.118.233.241"  # External IP of the GKE service (NodePort or LoadBalancer)

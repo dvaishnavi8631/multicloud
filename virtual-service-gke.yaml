@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: VirtualService
+metadata:
+  name: simple-app-virtual-service-gke
+spec:
+  hosts:
+    - "simple-app.local"  # The service hostname in GKE
+  http:
+    - route:
+        - destination:
+            host: simple-app-service  # The service name in GKE
+            port:
+              number: 80
+        weight: 100
