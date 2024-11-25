@@ -2,6 +2,8 @@ apiVersion: nginx.org/v1
 kind: ServiceEntry
 metadata:
   name: cross-cluster-entry-eks
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
 spec:
   hosts:
     - "simple-app-eks.local"  # DNS of your EKS service
