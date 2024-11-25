@@ -28,3 +28,46 @@ To DELETE deployments:
 2. $run az aks get-credentials --resource-group Multicloud --name multicloudAKS
 3. $kubectl get deployments
 4. $kubectl delete deployment simple-app-deployment
+
+_______________________________________________________________________________________________________________________
+
+connecting to kube cluster context
+
+Switch Context to AWS EKS
+
+Switch to the AWS EKS context to ensure you are working with the right cluster:
+
+kubectl config use-context arn:aws:eks:eu-west-1:250738637992:cluster/x23183209-multicloud
+
+_________________________________________________________________________________________________________________________
+[ec2-user@ip-172-31-39-218 ~]$ gcloud auth list
+                      Credentialed Accounts
+ACTIVE  ACCOUNT
+*       dvaishnavi8631@gmail.com
+        multicloud@elegant-hope-441319-t6.iam.gserviceaccount.com
+
+To set the active account, run:
+    $ gcloud config set account multicloud@elegant-hope-441319-t6.iam.gserviceaccount.com
+
+[ec2-user@ip-172-31-39-218 ~]$ gcloud config set project elegant-hope-441319
+$gcloud container clusters list --project elegant-hope-441319
+
+$gcloud container clusters get-credentials gcp-multicloud --zone europe-west1-b --project elegant-hope-441319-t6
+
+____________________________________________________________________________________________________________________________________________
+
+kubectl scale deployment istiod -n istio-system --replicas=0
+kubectl scale deployment istio-ingressgateway -n istio-system --replicas=0
+
+
+
+az aks get-credentials --resource-group Multicloud --name multicloudAKS
+kubectl config use-context myAKSCluster
+
+az vm list --resource-group Multicloud --query "[?tags.aksCluster=='multicloudAKS']" --output table
+az vm deallocate --resource-group <resource-group> --name <vm-name>
+az vm start --resource-group <resource-group> --name <vm-name>
+
+az aks nodepool list --resource-group Multicloud --cluster-name multicloudAKS --output table
+
+az aks scale --resource-group Multicloud --name multicloudAKS --nodepool-name nodepool1 --node-count 0
