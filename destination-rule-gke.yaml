@@ -6,4 +6,4 @@ spec:
   host: simple-app.local  # Host to apply the rule to
   trafficPolicy:
     tls:
-      mode: ISTIO_MUTUAL  # Enable mutual TLS for security
+      mode: MUTUAL  # Enable mutual TLS for security

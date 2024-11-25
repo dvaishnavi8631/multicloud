@@ -54,6 +54,9 @@ $gcloud container clusters list --project elegant-hope-441319
 
 $gcloud container clusters get-credentials gcp-multicloud --zone europe-west1-b --project elegant-hope-441319-t6
 
+$kubectl config use-context gke_elegant-hope-441319-t6_europe-west1-b_gcp-multicloud
+
+
 ____________________________________________________________________________________________________________________________________________
 
 kubectl scale deployment istiod -n istio-system --replicas=0

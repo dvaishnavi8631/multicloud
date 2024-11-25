@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: simple-app-ingress
+  namespace: default  # Specify the namespace if it's not in default
+spec:
+  ingressClassName: nginx  # This references the 'nginx' Ingress class created earlier
+  rules:
+    - host: simple-app.local  # Replace with your domain or external IP
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: simple-app-service  # The name of your service
+                port:
+                  number: 80
