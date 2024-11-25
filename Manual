@@ -74,3 +74,27 @@ az vm start --resource-group <resource-group> --name <vm-name>
 az aks nodepool list --resource-group Multicloud --cluster-name multicloudAKS --output table
 
 az aks scale --resource-group Multicloud --name multicloudAKS --nodepool-name nodepool1 --node-count 0
+
+____________________________________________________________________________________________________________
+
+Stop the Datadog Agent Service:
+
+sudo systemctl stop datadog-agent
+
+This will stop the agent from collecting and sending data.
+
+Disable the Agent Temporarily (Optional): Prevent the agent from starting automatically on reboot:
+
+sudo systemctl disable datadog-agent
+
+Re-enable and Restart When Needed:
+
+    To start the agent again:
+
+sudo systemctl start datadog-agent
+
+To re-enable it on reboot:
+
+        sudo systemctl enable datadog-agent
+
+
