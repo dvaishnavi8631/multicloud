@@ -1,11 +1,14 @@
-# Use an official Nginx image as the base image
+# Use the official Nginx image as the base image
 FROM nginx:alpine
 
-# Copy the index.html file to the default nginx HTML directory
-COPY index.html /usr/share/nginx/html/index.html
+# Set the working directory in the container
+WORKDIR /usr/share/nginx/html
 
-# Expose port 80 to make the app accessible
+# Copy the HTML file into the container
+COPY index.html .
+
+# Expose port 80 to make the container's web server accessible
 EXPOSE 80
 
-# Start Nginx when the container runs
+# Start Nginx server
 CMD ["nginx", "-g", "daemon off;"]
