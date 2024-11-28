@@ -9,6 +9,7 @@ pipeline {
         ECR_REPOSITORY = 'x23183209-multicloud'  // ECR repository name
         K8S_NAMESPACE = 'default'  // Kubernetes namespace
         DEPLOYMENT_NAME = 'simple-app-deployment'  // Kubernetes deployment name
+        IMAGE_TAG = 'latest'  // Docker image tag
     }
     stages {
         stage('Checkout Code') {
@@ -53,7 +54,7 @@ pipeline {
             steps {
                 script {
                     echo 'Building Docker image...'
-                    sh "docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest ."
+                    sh "docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -62,7 +63,7 @@ pipeline {
             steps {
                 script {
                     echo 'Pushing Docker image to AWS ECR...'
-                    sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+                    sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
                 }
             }
         }
@@ -75,7 +76,7 @@ pipeline {
                         aws eks update-kubeconfig \
                             --region ${AWS_REGION} \
                             --profile ${SSO_PROFILE} \
-                            --name x23183209-multicloud  # Replace with your EKS cluster name
+                            --name x23183209-multicloud
                     """
                 }
             }
@@ -84,11 +85,19 @@ pipeline {
         stage('Create or Update Deployment') {
             steps {
                 script {
-                    echo 'Applying Kubernetes deployment manifest...'
-                    // Update the image in the deployment.yaml
+                    echo 'Updating Kubernetes deployment manifest with dynamic values...'
+
+                    // Use envsubst to substitute variables in deployment.yaml
                     sh """
-                    
-                        kubectl apply -f deployment.yaml
+                        export REGISTRY_URL=${ECR_REGISTRY}
+                        export IMAGE_NAME=${ECR_REPOSITORY}
+                        export IMAGE_TAG=${IMAGE_TAG}
+                        envsubst < deployment.yaml > temp-deployment.yaml
+                    """
+
+                    // Apply the updated deployment manifest
+                    sh """
+                        kubectl apply -f temp-deployment.yaml
                         kubectl apply -f service.yaml
                     """
                 }

@@ -39,6 +39,9 @@ Switch to the AWS EKS context to ensure you are working with the right cluster:
 
 kubectl config use-context arn:aws:eks:eu-west-1:250738637992:cluster/x23183209-multicloud
 
+For Node 1: http://52.49.62.6:30406
+For Node 2: http://63.35.223.29:30406
+
 _________________________________________________________________________________________________________________________
 [ec2-user@ip-172-31-39-218 ~]$ gcloud auth list
                       Credentialed Accounts
@@ -55,6 +58,7 @@ $gcloud container clusters list --project elegant-hope-441319
 $gcloud container clusters get-credentials gcp-multicloud --zone europe-west1-b --project elegant-hope-441319-t6
 
 $kubectl config use-context gke_elegant-hope-441319-t6_europe-west1-b_gcp-multicloud
+
 
 
 ____________________________________________________________________________________________________________________________________________
@@ -97,4 +101,9 @@ To re-enable it on reboot:
 
         sudo systemctl enable datadog-agent
 
+
+        Value:    fFE8Q~afRLomRFXOCKxJg6-OhcVadH3yxH0LzcyN
+        secret id: f078154f-7989-46b4-a6a0-75e6b4db384a
+        (client) ID: 71eb8571-fda4-41e8-9132-c4276b5d597b
+        (tenant) ID :114ee39b-e0cc-439f-9bb9-c81574d1e310
 
