@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: simple-app-deployment
+  labels:
+    app: simple-app
 spec:
   replicas: 1
   selector:
@@ -14,7 +16,6 @@ spec:
     spec:
       containers:
         - name: simple-app
-          # Image will be dynamically updated in the pipeline
-          image: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG} 
+          image: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}  # These variables will be replaced dynamically
           ports:
             - containerPort: 80
