@@ -10,10 +10,10 @@ To DELETE deployments:
 
 ------------------------------------------For AWS----------------------------------------------------------
 1. login to AWS:
-2. run $aws eks --region eu-west1 update-kubeconfig --name x23183209-multicloud
+2. run $aws eks update-kubeconfig --region eu-west-1 --name x23183209-multicloud --profile MSCCLOUD-250738637992
 3. $kubectl get deployments
 4. $kubectl delete deployment simple-app-deployment
-5. $aws eks update-kubeconfig --region eu-west1 --name x23183209-multicloud
+5. $ kubectl config use-context arn:aws:eks:eu-west-1:250738637992:cluster/x23183209-multicloud
 6. $kubectl scale deployment x23183209-multicloud --replicas=0
 
 ------------------------------------------For GCP----------------------------------------------------------
@@ -22,6 +22,8 @@ To DELETE deployments:
 2. run $gcloud container clusters get-credentials gcp-multicloud --zone europe-west1-b --project elegant-hope-441319-t6
 3. $kubectl get deployments
 4. $kubectl delete deployment simple-app-deployment
+
+kubectl scale deployment simple-app-deployment --replicas=0
 
 ------------------------------------------For Azure--------------------------------------------------------
 1. Login to Azure
@@ -69,7 +71,7 @@ kubectl scale deployment istio-ingressgateway -n istio-system --replicas=0
 
 
 az aks get-credentials --resource-group Multicloud --name multicloudAKS
-kubectl config use-context myAKSCluster
+kubectl config use-context multicloudAKS
 
 az vm list --resource-group Multicloud --query "[?tags.aksCluster=='multicloudAKS']" --output table
 az vm deallocate --resource-group <resource-group> --name <vm-name>
@@ -106,4 +108,21 @@ To re-enable it on reboot:
         secret id: f078154f-7989-46b4-a6a0-75e6b4db384a
         (client) ID: 71eb8571-fda4-41e8-9132-c4276b5d597b
         (tenant) ID :114ee39b-e0cc-439f-9bb9-c81574d1e310
+
+____________________________________________________________________________________________________________
+- context:
+    cluster: arn:aws:eks:eu-west-1:250738637992:cluster/x23183209-multicloud
+    namespace: datadog-agent
+    user: arn:aws:eks:eu-west-1:250738637992:cluster/x23183209-multicloud
+  name: arn:aws:eks:eu-west-1:250738637992:cluster/x23183209-multicloud
+- context:
+    cluster: gke_elegant-hope-441319-t6_europe-west1-b_gcp-multicloud
+    user: gke_elegant-hope-441319-t6_europe-west1-b_gcp-multicloud
+  name: gke_elegant-hope-441319-t6_europe-west1-b_gcp-multicloud
+- context:
+    cluster: multicloudAKS
+    user: clusterUser_Multicloud_multicloudAKS
+  name: multicloudAKS
+caws eks update-kubeconfig --region eu-west-1 --name x23183209-multicloud
+
 

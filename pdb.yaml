@@ -1,0 +1,11 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: simple-app-pdb
+  labels:
+    app: simple-app
+spec:
+  minAvailable: 1  # At least one pod should always be available
+  selector:
+    matchLabels:
+      app: simple-app

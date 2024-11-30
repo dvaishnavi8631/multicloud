@@ -5,7 +5,7 @@ metadata:
   labels:
     app: simple-app
 spec:
-  replicas: 1
+  replicas: 2  # Increased replicas for redundancy
   selector:
     matchLabels:
       app: simple-app
@@ -19,3 +19,22 @@ spec:
           image: ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}  # These variables will be replaced dynamically
           ports:
             - containerPort: 80
+          resources:  # Resource requests and limits
+            requests:
+              memory: "128Mi"
+              cpu: "200m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:  # Checks if the application is alive
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:  # Checks if the application is ready to serve traffic
+            httpGet:
+              path: /readyz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
