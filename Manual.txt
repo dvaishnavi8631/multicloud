@@ -61,6 +61,10 @@ $gcloud container clusters get-credentials gcp-multicloud --zone europe-west1-b 
 
 $kubectl config use-context gke_elegant-hope-441319-t6_europe-west1-b_gcp-multicloud
 
+http://34.38.132.164:30574
+http://34.38.155.93:30574
+
+
 
 
 ____________________________________________________________________________________________________________________________________________
