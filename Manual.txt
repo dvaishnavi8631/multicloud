@@ -69,5 +69,3 @@ http://34.38.155.93:30574
     user: clusterUser_Multicloud_multicloudAKS
   name: multicloudAKS
 caws eks update-kubeconfig --region eu-west-1 --name x23183209-multicloud
-_____________________________________________________________________________________________________________
-added webhook
