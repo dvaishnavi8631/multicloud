@@ -1,18 +1,13 @@
 Step 1: Start EC2
 Step 2: Connect to EC2
 Step 3: Start Jenkins
-Step 4: 
 
-
-
-
-To DELETE deployments:
 
 ------------------------------------------For AWS----------------------------------------------------------
 1. login to AWS:
 2. run $aws eks update-kubeconfig --region eu-west-1 --name x23183209-multicloud --profile MSCCLOUD-250738637992
 3. $kubectl get deployments
-4. $kubectl delete deployment simple-app-deployment
+4. $kubectl delete deployment simple-app-deployment ( To save up costing)
 5. $ kubectl config use-context arn:aws:eks:eu-west-1:250738637992:cluster/x23183209-multicloud
 6. $kubectl scale deployment x23183209-multicloud --replicas=0
 
@@ -21,20 +16,23 @@ To DELETE deployments:
 1. login to GCP:
 2. run $gcloud container clusters get-credentials gcp-multicloud --zone europe-west1-b --project elegant-hope-441319-t6
 3. $kubectl get deployments
-4. $kubectl delete deployment simple-app-deployment
-
-kubectl scale deployment simple-app-deployment --replicas=0
+4. $kubectl delete deployment simple-app-deployment ( To save up costing)
+5. $kubectl scale deployment simple-app-deployment --replicas=0
+6. $gcloud config set project elegant-hope-441319
+7. $gcloud container clusters list --project elegant-hope-441319
 
 ------------------------------------------For Azure--------------------------------------------------------
 1. Login to Azure
 2. $run az aks get-credentials --resource-group Multicloud --name multicloudAKS
-3. $kubectl get deployments
-4. $kubectl delete deployment simple-app-deployment
+3. $kubectl config use-context multicloudAKS
+4. $kubectl get deployments
+5. $kubectl delete deployment simple-app-deployment
 
 _______________________________________________________________________________________________________________________
 
-connecting to kube cluster context
+connecting to Application
 
+------------------------------------------For AWS-----------------------------------------------------------
 Switch Context to AWS EKS
 
 Switch to the AWS EKS context to ensure you are working with the right cluster:
@@ -45,17 +43,8 @@ For Node 1: http://52.49.62.6:30406
 For Node 2: http://63.35.223.29:30406
 
 _________________________________________________________________________________________________________________________
-[ec2-user@ip-172-31-39-218 ~]$ gcloud auth list
-                      Credentialed Accounts
-ACTIVE  ACCOUNT
-*       dvaishnavi8631@gmail.com
-        multicloud@elegant-hope-441319-t6.iam.gserviceaccount.com
 
-To set the active account, run:
-    $ gcloud config set account multicloud@elegant-hope-441319-t6.iam.gserviceaccount.com
-
-[ec2-user@ip-172-31-39-218 ~]$ gcloud config set project elegant-hope-441319
-$gcloud container clusters list --project elegant-hope-441319
+------------------------------------------For GCP------------------------------------------------------------
 
 $gcloud container clusters get-credentials gcp-multicloud --zone europe-west1-b --project elegant-hope-441319-t6
 
@@ -64,55 +53,7 @@ $kubectl config use-context gke_elegant-hope-441319-t6_europe-west1-b_gcp-multic
 http://34.38.132.164:30574
 http://34.38.155.93:30574
 
-
-
-
-____________________________________________________________________________________________________________________________________________
-
-kubectl scale deployment istiod -n istio-system --replicas=0
-kubectl scale deployment istio-ingressgateway -n istio-system --replicas=0
-
-
-
-az aks get-credentials --resource-group Multicloud --name multicloudAKS
-kubectl config use-context multicloudAKS
-
-az vm list --resource-group Multicloud --query "[?tags.aksCluster=='multicloudAKS']" --output table
-az vm deallocate --resource-group <resource-group> --name <vm-name>
-az vm start --resource-group <resource-group> --name <vm-name>
-
-az aks nodepool list --resource-group Multicloud --cluster-name multicloudAKS --output table
-
-az aks scale --resource-group Multicloud --name multicloudAKS --nodepool-name nodepool1 --node-count 0
-
-____________________________________________________________________________________________________________
-
-Stop the Datadog Agent Service:
-
-sudo systemctl stop datadog-agent
-
-This will stop the agent from collecting and sending data.
-
-Disable the Agent Temporarily (Optional): Prevent the agent from starting automatically on reboot:
-
-sudo systemctl disable datadog-agent
-
-Re-enable and Restart When Needed:
-
-    To start the agent again:
-
-sudo systemctl start datadog-agent
-
-To re-enable it on reboot:
-
-        sudo systemctl enable datadog-agent
-
-
-        Value:    fFE8Q~afRLomRFXOCKxJg6-OhcVadH3yxH0LzcyN
-        secret id: f078154f-7989-46b4-a6a0-75e6b4db384a
-        (client) ID: 71eb8571-fda4-41e8-9132-c4276b5d597b
-        (tenant) ID :114ee39b-e0cc-439f-9bb9-c81574d1e310
-
+----------------------------------------------Contexts-----------------------------------------------------
 ____________________________________________________________________________________________________________
 - context:
     cluster: arn:aws:eks:eu-west-1:250738637992:cluster/x23183209-multicloud

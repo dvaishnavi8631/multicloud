@@ -1,0 +1,72 @@
+Testing your deployment functionality across multiple clouds ensures that the application works as expected in each environment. Here’s a structured approach to test the functionality:
+
+1. Verify Kubernetes Resources
+_______________________________________________________________________________________________________________________
+Ensure all Kubernetes resources are running properly in each environment.
+
+1.  Check Pod Status
+
+$kubectl get pods -n default
+
+________________________________________________________________________________________________________________________
+Look for all pods in the Running state.
+
+2.  Check Services: Ensure services are properly created:
+
+$kubectl get svc -n default
+
+________________________________________________________________________________________________________________________
+
+Verify that your service is exposed as ClusterIP, LoadBalancer, or NodePort as intended.
+3. Access the Application (For NodePort Services)
+
+Get the node IP and NodePort:
+
+$kubectl get nodes -o wide
+#kubectl get svc simple-app-service -n default
+
+----->>> Access the application using http://<node-ip>:<node-port>.
+
+_________________________________________________________________________________________________________________________
+4. Functional Testing
+
+Perform basic functional checks:
+
+    Validate the homepage or main endpoint:
+
+curl http://<service-url>/healthz
+
+Check readiness endpoint:
+
+    curl http://<service-url>/readyz
+
+
+*************** Simulate Failures ******************
+
+Test the self-healing functionality by simulating failures.
+
+1.  Delete a Pod: Delete a pod and confirm it restarts automatically:
+
+$kubectl delete pod <pod-name> -n default
+$kubectl get pods -n default
+
+2.  Trigger a Crash: if your app has a deliberate crash endpoint (e.g., /crash), hit it and observe the self-healing process:
+
+curl http://<service-url>/crash
+$kubectl get pods -n default
+
+3. Drain a Node: Simulate a node failure:
+
+$kubectl drain <node-name> --ignore-daemonsets --force
+
+Check if pods are rescheduled to other nodes:
+
+$kubectl get pods -o wide -n default
+
+_______________________________________________________________________________________________________________________
+
+5. Monitor Logs
+
+Use kubectl logs to check application logs and identify any runtime issues:
+
+$kubectl logs <pod-name> -n default
