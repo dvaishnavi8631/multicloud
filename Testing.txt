@@ -34,11 +34,13 @@ Perform basic functional checks:
 
     Validate the homepage or main endpoint:
 
-curl http://<service-url>/healthz
+curl http://52.49.62.6:30406/healthz
+
+http://52.49.62.6:30406
 
 Check readiness endpoint:
 
-    curl http://<service-url>/readyz
+    curl http://52.49.62.6:30406/readyz
 
 
 *************** Simulate Failures ******************
@@ -50,12 +52,7 @@ Test the self-healing functionality by simulating failures.
 $kubectl delete pod <pod-name> -n default
 $kubectl get pods -n default
 
-2.  Trigger a Crash: if your app has a deliberate crash endpoint (e.g., /crash), hit it and observe the self-healing process:
-
-curl http://<service-url>/crash
-$kubectl get pods -n default
-
-3. Drain a Node: Simulate a node failure:
+2. Drain a Node: Simulate a node failure:
 
 $kubectl drain <node-name> --ignore-daemonsets --force
 
@@ -72,4 +69,6 @@ Use kubectl logs to check application logs and identify any runtime issues:
 $kubectl logs <pod-name> -n default
 
 _______________________________________________________________________________________________________________________
-Testing
+Load testing:
+
+docker run --rm jordi/ab -n 1000 -c 50 http://52.49.62.6:30406/
