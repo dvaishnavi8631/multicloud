@@ -52,13 +52,6 @@ Test the self-healing functionality by simulating failures.
 $kubectl delete pod <pod-name> -n default
 $kubectl get pods -n default
 
-2. Drain a Node: Simulate a node failure:
-
-$kubectl drain <node-name> --ignore-daemonsets --force
-
-Check if pods are rescheduled to other nodes:
-
-$kubectl get pods -o wide -n default
 
 _______________________________________________________________________________________________________________________
 
