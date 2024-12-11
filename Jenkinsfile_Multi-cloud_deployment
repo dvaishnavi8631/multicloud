@@ -13,16 +13,16 @@ pipeline {
         GCP_PROJECT = 'elegant-hope-441319-t6'
         GKE_CLUSTER = 'gcp-multicloud'
         GKE_REGION = 'europe-west1'
-        GKE_ZONE = 'europe-west1-b'  // Added zone variable
+        GKE_ZONE = 'europe-west1-b'
         GCLOUD_PATH = '/home/jenkins/google-cloud-sdk/bin'
-        IMAGE_NAME_GCP = "europe-docker.pkg.dev/${GCP_PROJECT}/gcp-multicloud/multicloud-app"  // Full image path for GCP
+        IMAGE_NAME_GCP = "europe-docker.pkg.dev/${GCP_PROJECT}/gcp-multicloud/multicloud-app"
 
         // Azure Variables
         AZURE_SUBSCRIPTION_ID = '2d101f2e-3531-4cd5-a463-6f697453bb43'
         AZURE_RESOURCE_GROUP = 'Multicloud'
         AKS_CLUSTER_NAME = 'multicloudAKS'
-        ACR_REGISTRY = 'x23183209multicloud.azurecr.io'  // ACR name
-        IMAGE_NAME_AZURE = "${ACR_REGISTRY}/multicloud-app"  // Full image path for Azure
+        ACR_REGISTRY = 'x23183209multicloud.azurecr.io'
+        IMAGE_NAME_AZURE = "${ACR_REGISTRY}/multicloud-app"
 
         // Common Variables
         GIT_REPO = 'https://github.com/dvaishnavi8631/multicloud.git'
@@ -46,37 +46,69 @@ pipeline {
             }
         }
 
-        // AWS Deployment Stage
-        stage('AWS Deployment') {
+        stage('Login to AWS via SSO') {
             steps {
                 script {
-                    echo 'Ensure AWS SSO login has been performed manually before running the pipeline.'
+                    echo 'Authenticating with AWS SSO...'
                     sh "aws sso login --profile ${SSO_PROFILE} --region ${AWS_REGION}"
+                }
+            }
+        }
 
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo 'Building Docker image...'
+                    sh "docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ."
+                }
+            }
+        }
+
+        stage('Push Image to AWS ECR') {
+            steps {
+                script {
+                    echo 'Logging into AWS ECR...'
                     def awsLoginPassword = sh(
                         script: "aws ecr get-login-password --region ${AWS_REGION} --profile ${SSO_PROFILE}",
                         returnStdout: true
                     ).trim()
                     sh "docker login -u AWS -p ${awsLoginPassword} ${ECR_REGISTRY}"
-
-                    echo 'Building Docker image for AWS...'
-                    sh "docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ."
-
                     echo 'Pushing Docker image to AWS ECR...'
                     sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-
-                    echo 'Configuring kubectl for AWS EKS...'
-                    sh "aws eks update-kubeconfig --region ${AWS_REGION} --profile ${SSO_PROFILE} --name x23183209-multicloud"
-
-                    echo 'Deploying application to AWS Kubernetes...'
-                    sh "kubectl apply -f deployment.yaml"
-                    sh "kubectl apply -f service.yaml"
                 }
             }
         }
 
-        // GCP Deployment Stage
-        stage('GCP Deployment') {
+        stage('Deploy to AWS EKS') {
+            steps {
+                script {
+                    echo 'Configuring kubectl for AWS EKS...'
+                    sh """
+                        aws eks update-kubeconfig \
+                            --region ${AWS_REGION} \
+                            --profile ${SSO_PROFILE} \
+                            --name x23183209-multicloud
+                    """
+                    echo 'Creating ConfigMap for NGINX...'
+                    sh """
+                        kubectl create configmap simple-app-nginx-config --from-file=default.conf --namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                    """
+                    echo 'Deploying to AWS EKS...'
+                    sh """
+                        export REGISTRY_URL=${ECR_REGISTRY}
+                        export IMAGE_NAME=${ECR_REPOSITORY}
+                        export IMAGE_TAG=${IMAGE_TAG}
+                        envsubst < deployment.yaml > temp-deployment.yaml
+                        kubectl apply -f temp-deployment.yaml
+                        kubectl apply -f service.yaml
+                        kubectl apply -f hpa.yaml
+                        kubectl apply -f pdb.yaml
+                    """
+                }
+            }
+        }
+
+        stage('Push Image to GCP Artifact Registry') {
             steps {
                 script {
                     echo 'Authenticating with Google Cloud...'
@@ -86,42 +118,45 @@ pipeline {
                             gcloud auth activate-service-account --key-file="${GOOGLE_APPLICATION_CREDENTIALS}"
                             gcloud config set project ${GCP_PROJECT}
                             gcloud auth configure-docker europe-docker.pkg.dev --quiet
-                        """
-
-                        echo 'Building Docker image for GCP...'
-                        sh """
-                            export PATH=${GCLOUD_PATH}:$PATH
-                            docker build -t ${IMAGE_NAME_GCP}:${IMAGE_TAG} .
-                        """
-
-                        echo 'Pushing Docker image to Google Artifact Registry...'
-                        sh """
-                            export PATH=${GCLOUD_PATH}:$PATH
+                            docker tag ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ${IMAGE_NAME_GCP}:${IMAGE_TAG}
                             docker push ${IMAGE_NAME_GCP}:${IMAGE_TAG}
-                        """
-
-                        echo 'Getting credentials for GKE...'
-                        sh """
-                            export PATH=${GCLOUD_PATH}:$PATH
-                            gcloud container clusters get-credentials ${GKE_CLUSTER} --zone ${GKE_ZONE} --project ${GCP_PROJECT}
-                        """
-
-                        echo 'Deploying application to GCP Kubernetes...'
-                        sh """
-                            export PATH=${GCLOUD_PATH}:$PATH
-                            kubectl apply -f deployment.yaml
-                            kubectl apply -f service.yaml
                         """
                     }
                 }
             }
         }
 
-        // Azure Deployment Stage
-        stage('Azure Deployment') {
+        stage('Deploy to GCP GKE') {
             steps {
                 script {
-                    echo 'Logging into Azure...'
+                    echo 'Configuring kubectl for GKE...'
+                    sh """
+                        export PATH=${GCLOUD_PATH}:$PATH
+                        gcloud container clusters get-credentials ${GKE_CLUSTER} --zone ${GKE_ZONE} --project ${GCP_PROJECT}
+                    """
+                    echo 'Creating ConfigMap for NGINX...'
+                    sh """
+                        kubectl create configmap simple-app-nginx-config --from-file=default.conf --namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                    """
+                    echo 'Deploying to GKE...'
+                    sh """
+                        export REGISTRY_URL=europe-docker.pkg.dev/${GCP_PROJECT}/gcp-multicloud
+                        export IMAGE_NAME=multicloud-app
+                        export IMAGE_TAG=${IMAGE_TAG}
+                        envsubst < deployment.yaml > temp-deployment.yaml
+                        kubectl apply -f temp-deployment.yaml
+                        kubectl apply -f service.yaml
+                        kubectl apply -f hpa.yaml
+                        kubectl apply -f pdb.yaml
+                    """
+                }
+            }
+        }
+
+        stage('Push Image to Azure ACR') {
+            steps {
+                script {
+                    echo 'Logging into Azure ACR...'
                     withCredentials([
                         string(credentialsId: 'azure-client-id', variable: 'AZURE_CLIENT_ID'),
                         string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
@@ -131,21 +166,36 @@ pipeline {
                             az login --service-principal -u ${AZURE_CLIENT_ID} -p ${AZURE_CLIENT_SECRET} --tenant ${AZURE_TENANT_ID}
                             az account set --subscription ${AZURE_SUBSCRIPTION_ID}
                             az acr login --name ${ACR_REGISTRY}
-                        """
-
-                        echo 'Building Docker image for Azure...'
-                        sh "docker build -t ${IMAGE_NAME_AZURE}:${IMAGE_TAG} ."
-
-                        echo 'Pushing Docker image to Azure Container Registry...'
-                        sh "docker push ${IMAGE_NAME_AZURE}:${IMAGE_TAG}"
-
-                        echo 'Deploying application to Azure Kubernetes...'
-                        sh """
-                            az aks get-credentials --resource-group ${AZURE_RESOURCE_GROUP} --name ${AKS_CLUSTER_NAME}
-                            kubectl apply -f deployment.yaml
-                            kubectl apply -f service.yaml
+                            docker tag ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ${IMAGE_NAME_AZURE}:${IMAGE_TAG}
+                            docker push ${IMAGE_NAME_AZURE}:${IMAGE_TAG}
                         """
                     }
+                }
+            }
+        }
+
+        stage('Deploy to Azure AKS') {
+            steps {
+                script {
+                    echo 'Configuring kubectl for AKS...'
+                    sh """
+                        az aks get-credentials --resource-group ${AZURE_RESOURCE_GROUP} --name ${AKS_CLUSTER_NAME}
+                    """
+                    echo 'Creating ConfigMap for NGINX...'
+                    sh """
+                        kubectl create configmap simple-app-nginx-config --from-file=default.conf --namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                    """
+                    echo 'Deploying to Azure AKS...'
+                    sh """
+                        export REGISTRY_URL=${ACR_REGISTRY}
+                        export IMAGE_NAME=multicloud-app
+                        export IMAGE_TAG=${IMAGE_TAG}
+                        envsubst < deployment.yaml > temp-deployment.yaml
+                        kubectl apply -f temp-deployment.yaml
+                        kubectl apply -f service.yaml
+                        kubectl apply -f hpa.yaml
+                        kubectl apply -f pdb.yaml
+                    """
                 }
             }
         }
