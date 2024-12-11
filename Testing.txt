@@ -72,5 +72,3 @@ Use kubectl logs to check application logs and identify any runtime issues:
 $kubectl logs <pod-name> -n default
 
 _______________________________________________________________________________________________________________________
-Testing
-Testing
